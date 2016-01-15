@@ -1,0 +1,20 @@
+---
+# defaults file for lxc
+lxc_domain_name: lxc
+lxc_ip_address: 10.0.3.1
+
+lxc_containers:
+ - name: ubuntu.trusty
+   template: ubuntu
+   release: trusty
+   user: dev
+   password: dev
+
+lxc_clones: []
+# - name: sample
+#   template: ubuntu.trusty
+#   ip: 10.0.3.22
+
+lxc_forwarded_ports: []
+# - source: 80
+#   target: 10.0.3.22:80

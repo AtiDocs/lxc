@@ -1,0 +1,1 @@
+192.168.12.34 ansible_ssh_user=vagrant ansible_ssh_private_key=~/.vagrant.d/insecure_private_key

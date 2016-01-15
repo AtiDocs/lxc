@@ -1,0 +1,14 @@
+---
+- name: LXC test playbook
+  hosts: all
+  vars:
+    lxc_clones:
+      - name: sample
+        template: ubuntu.trusty
+        ip: 10.0.3.3
+    lxc_forwarded_ports:
+      - source: 2022
+        target: 10.0.3.3:22
+  roles:
+    - lxc
+

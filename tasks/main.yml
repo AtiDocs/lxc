@@ -1,0 +1,83 @@
+---
+# tasks file for lxc
+
+- name: add ansible repo
+  apt_repository: repo=ppa:ansible/ansible
+
+- name: install system packages
+  apt: name={{item}} state=latest update_cache=yes
+  with_items:
+    - unzip
+    - lxc
+    - lxc-dev
+    - dnsmasq
+    - iptables-persistent
+    - ansible
+
+- name: create dnsmasq config file
+  file: path=/etc/lxc/dnsmasq.conf state=touch
+
+- name: set lxc domain name
+  lineinfile:
+    dest: /etc/default/lxc-net
+    regexp: "{{item.regexp}}"
+    line: "{{item.line}}"
+  with_items:
+    - regexp: ^LXC_DOMAIN=
+      line: LXC_DOMAIN="{{lxc_domain_name}}"
+    - regexp: ^LXC_DHCP_CONFILE=
+      line: LXC_DHCP_CONFILE=/etc/lxc/dnsmasq.conf
+  notify:
+    - restart lxc-net
+
+- name: setup lxc nameserver
+  lineinfile:
+    dest: /etc/dnsmasq.d/lxc
+    regexp: ^server=
+    line: server=/lxc/{{lxc_ip_address}}
+  notify:
+    - restart lxc-net
+
+- name: create base container
+  command: >
+      lxc-create --name {{item.name}} -t {{item.template}} -- r {{item.release}}
+      --user {{item.user}} --password {{item.password}}
+      creates=/var/lib/lxc/{{item.name}}/config
+  with_items: lxc_containers
+
+- name: define cluster
+  lineinfile:
+    dest: /etc/lxc/dnsmasq.conf
+    line: dhcp-host={{item.name}}.{{lxc_domain_name}},{{item.ip}}
+  with_items: "{{lxc_clones}}"
+
+- name: restart lxc-net
+  service: name=lxc-net state=restarted
+
+- name: restart dnsmasq
+  service: name=dnsmasq state=restarted
+
+- name: create cluster nodes
+  command: >
+    lxc-clone -s {{item.template}} {{item.name}} creates=/var/lib/lxc/{{item.name}}/config
+  with_items: "{{lxc_clones}}"
+
+- name: start cluster
+  command: lxc-start -n {{item.name}} -d
+  with_items: "{{lxc_clones}}"
+
+- name: enable autostart of conatianers
+  lineinfile:
+    dest: /var/lib/lxc/{{item.name}}/config
+    line: lxc.start.auto = 1
+  with_items: "{{lxc_clones}}"
+
+- name: flush existing port forwarings
+  command: iptables -t nat -F PREROUTING
+
+- name: forward ports to lxc machines
+  command: iptables -t nat -A PREROUTING -i eth1 -p tcp --dport {{item.source}} -j DNAT --to {{item.target}}
+  with_items: "{{lxc_forwarded_ports}}"
+
+- name: save port forwardings
+  command: invoke-rc.d iptables-persistent save
