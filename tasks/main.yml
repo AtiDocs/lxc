@@ -41,7 +41,7 @@
 - name: create base container
   command: >
       lxc-create --name {{item.name}} -t {{item.template}} -- r {{item.release}}
-      --user {{item.user}} --password {{item.password}}
+      --user {{item.user}} --password {{item.password}} --packages python2.7,python-pip
       creates=/var/lib/lxc/{{item.name}}/config
   with_items: lxc_containers
 
