@@ -10,6 +10,10 @@ Role Variables
 # Basic settings for lxc networking
 lxc_domain_name: lxc
 lxc_ip_address: 10.0.3.1
+lxc_netmask: 255.255.0.0
+lxc_network: 10.10.0.0/16
+lxc_dhcp_range: 10.10.255.0,10.10.255.254
+lxc_dhcp_max: 253
 
 # containers to be used as a template
 lxc_containers:
@@ -23,12 +27,12 @@ lxc_containers:
 lxc_clones:
   - name: sample
     template: ubuntu.trusty
-    ip: 10.0.3.22
+    ip: 10.10.3.22
 
 # Expose ports from containers
-lxc_forwarded_ports: []
+lxc_forwarded_ports:
   - source: 80
-    target: 10.0.3.22:80
+    target: 10.10.3.22:80
 ```
 
 Example Playbook

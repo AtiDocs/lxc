@@ -1,7 +1,12 @@
 ---
 # defaults file for lxc
 lxc_domain_name: lxc
-lxc_ip_address: 10.0.3.1
+lxc_ip_address: 10.10.0.1
+lxc_netmask: 255.255.0.0
+lxc_network: 10.10.0.0/16
+lxc_dhcp_range: 10.10.255.0,10.10.255.254
+lxc_dhcp_max: 253
+
 
 lxc_containers:
  - name: ubuntu.trusty

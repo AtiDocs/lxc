@@ -5,10 +5,17 @@
     lxc_clones:
       - name: sample
         template: ubuntu.trusty
-        ip: 10.0.3.3
+        ip: 10.10.3.3
+
+      - name: other
+        template: ubuntu.trusty
+        ip: 10.10.5.5
+
     lxc_forwarded_ports:
       - source: 2022
-        target: 10.0.3.3:22
+        target: 10.10.3.3:22
+
+      - source: 2055
+        target: 10.10.5.5:22
   roles:
     - lxc
-

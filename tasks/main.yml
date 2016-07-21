@@ -1,83 +1,109 @@
 ---
 # tasks file for lxc
 
-- name: add ansible repo
+- name: lxc | add ansible repo
   apt_repository: repo=ppa:ansible/ansible
 
-- name: install system packages
+- name: lxc | install system packages
   apt: name={{item}} state=latest update_cache=yes
   with_items:
     - unzip
     - lxc
     - lxc-dev
+    - htop
     - dnsmasq
     - iptables-persistent
     - ansible
+    - python-pip
+    - python-dev
+    - gcc
 
-- name: create dnsmasq config file
+- name: lxc | install lxc-python
+  pip: name=lxc-python2 state=latest
+
+- name: lxc | save running containers
+  command: lxc-ls -1 --running
+  register: running_containers
+
+- name: lxc | ensure dnsmasq config file exists
   file: path=/etc/lxc/dnsmasq.conf state=touch
 
-- name: set lxc domain name
+- name: lxc | set fixed ips for containers
   lineinfile:
-    dest: /etc/default/lxc-net
-    regexp: "{{item.regexp}}"
-    line: "{{item.line}}"
-  with_items:
-    - regexp: ^LXC_DOMAIN=
-      line: LXC_DOMAIN="{{lxc_domain_name}}"
-    - regexp: ^LXC_DHCP_CONFILE=
-      line: LXC_DHCP_CONFILE=/etc/lxc/dnsmasq.conf
-  notify:
-    - restart lxc-net
+    dest: /etc/lxc/dnsmasq.conf
+    line: dhcp-host={{item.name}},{{item.ip}}
+  with_items: "{{lxc_clones}}"
+  register: lxc_net_hosts
 
-- name: setup lxc nameserver
+- name: lxc | configure lxc network
+  template: src=lxc-net.j2 dest=/etc/default/lxc-net
+  register: lxc_net_config
+
+- name: lxc | setup lxc nameserver
   lineinfile:
     dest: /etc/dnsmasq.d/lxc
     regexp: ^server=
     line: server=/lxc/{{lxc_ip_address}}
-  notify:
-    - restart lxc-net
+  register: lxc_dnsmasq
 
-- name: create base container
-  command: >
-      lxc-create --name {{item.name}} -t {{item.template}} -- r {{item.release}}
-      --user {{item.user}} --password {{item.password}} --packages python2.7,python-pip
-      creates=/var/lib/lxc/{{item.name}}/config
+- name: lxc | stop running containers
+  lxc_container: name={{ item }} state=stopped
+  with_items: "{{ running_containers.stdout_lines }}"
+  when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
+
+- name: lxc | ensure lxc-net config changes applied
+  service: name={{ item }} state=restarted
+  with_items:
+      - lxc-net
+      - dnsmasq
+  when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
+
+- name: lxc | ensure lxc-net started
+  service: name=lxc-net state=started enabled=yes
+
+- name: lxc | restore running containers
+  lxc_container: name={{ item }} state=started
+  with_items: "{{ running_containers.stdout_lines }}"
+  when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
+
+- name: lxc | create base container
+  lxc_container:
+    name: "{{ item.name }}"
+    template: ubuntu
+    template_options: >
+        --release {{ item.release }}
+        --user {{ item.user }}
+        --password {{ item.password }}
+        --packages python2.7,python-pip
+    state: stopped
+    container_log: true
   with_items: "{{ lxc_containers }}"
 
-- name: define cluster
-  lineinfile:
-    dest: /etc/lxc/dnsmasq.conf
-    line: dhcp-host={{item.name}}.{{lxc_domain_name}},{{item.ip}}
-  with_items: "{{lxc_clones}}"
+- name: lxc | create clones
+  lxc_container:
+    name: "{{ item.template }}"
+    clone_name: "{{ item.name }}"
+    state: stopped
+  with_items: "{{ lxc_clones }}"
 
-- name: restart lxc-net
-  service: name=lxc-net state=restarted
+- name: lxc | setup clones
+  lxc_container:
+    name: "{{ item.name }}"
+    container_config:
+      - "lxc.start.auto = 1"
+    state: restarted
+  with_items: "{{ lxc_clones }}"
 
-- name: restart dnsmasq
-  service: name=dnsmasq state=restarted
-
-- name: create cluster nodes
-  command: >
-    lxc-clone -s {{item.template}} {{item.name}} creates=/var/lib/lxc/{{item.name}}/config
-  with_items: "{{lxc_clones}}"
-
-- name: start cluster
-  command: lxc-start -n {{item.name}} -d
-  with_items: "{{lxc_clones}}"
-
-- name: enable autostart of conatianers
-  lineinfile:
-    dest: /var/lib/lxc/{{item.name}}/config
-    line: lxc.start.auto = 1
-  with_items: "{{lxc_clones}}"
-
-- name: flush existing port forwarings
-  command: iptables -t nat -F PREROUTING
-
-- name: forward ports to lxc machines
-  command: iptables -t nat -A PREROUTING -i eth1 -p tcp --dport {{item.source}} -j DNAT --to {{item.target}}
+- name: lxc | forward ports to lxc machines
+  iptables:
+    table: nat
+    chain: PREROUTING
+    in_interface: eth1
+    protocol: tcp
+    destination_port: "{{ item.source }}"
+    jump: DNAT
+    to_destination: "{{ item.target }}"
   with_items: "{{lxc_forwarded_ports}}"
 
-- name: save port forwardings
+- name: lxc | save port forwardings
   command: invoke-rc.d iptables-persistent save
