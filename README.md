@@ -45,10 +45,10 @@ Example Playbook
     lxc_clones:
       - name: sample
         template: ubuntu.trusty
-        ip: 10.0.3.3
+        ip: 10.10.3.3
     lxc_forwarded_ports:
       - source: 2022
-        target: 10.0.3.3:22
+        target: 10.10.3.3:22
   roles:
     - lxc
 ```
