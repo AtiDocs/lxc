@@ -84,6 +84,7 @@
     name: "{{ item.template }}"
     clone_name: "{{ item.name }}"
     state: stopped
+    backing_store: overlayfs
   with_items: "{{ lxc_clones }}"
 
 - name: lxc | setup clones
