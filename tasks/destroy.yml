@@ -1,0 +1,18 @@
+---
+- name: lxc-destroy | ensure container {{container}} is destroyed
+  lxc_container: name={{container}} state=absent
+
+- name: lxc-destroy | ensure container dns leases cleaned
+  lineinfile:
+    dest: /var/lib/misc/dnsmasq.lxcbr0.leases
+    regexp: " {{container}} "
+    state: absent
+
+- name: lxc-destroy | ensure static ip for container {{container}} is released
+  lineinfile:
+    dest: /etc/lxc/dnsmasq.conf
+    regexp: "^dhcp-host={{container}},"
+    state: absent
+
+- name: lxc-destroy | reload dnsmasq
+  command: killall -s SIGHUP dnsmasq

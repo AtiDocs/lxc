@@ -14,6 +14,13 @@ lxc_containers:
    release: trusty
    user: dev
    password: dev
+   packages:
+     - python2.7
+     - python-pip
+     - rsync
+     - ntp
+     - tzdata
+     - htop
 
 lxc_clones: []
 # - name: sample

@@ -51,11 +51,19 @@
   with_items: "{{ running_containers.stdout_lines }}"
   when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
 
+- name: lxc | remove dnsmasq leases
+  file: path=/var/lib/misc/dnsmasq.lxcbr0.leases state=absent
+  when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
+
 - name: lxc | ensure lxc-net config changes applied
   service: name={{ item }} state=restarted
   with_items:
       - lxc-net
       - dnsmasq
+  when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
+
+- name: lxc | reload dnsmasq
+  command: killall -s SIGHUP dnsmasq
   when: lxc_net_config.changed or lxc_net_hosts.changed or lxc_dnsmasq.changed
 
 - name: lxc | ensure lxc-net started
@@ -74,7 +82,7 @@
         --release {{ item.release }}
         --user {{ item.user }}
         --password {{ item.password }}
-        --packages python2.7,python-pip
+        --packages {{ item.packages|join(",") }}
     state: stopped
     container_log: true
   with_items: "{{ lxc_containers }}"
@@ -94,6 +102,13 @@
       - "lxc.start.auto = 1"
     state: restarted
   with_items: "{{ lxc_clones }}"
+
+- name: lxc | enable port forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    reload: yes
 
 - name: lxc | forward ports to lxc machines
   iptables:

@@ -1,13 +1,13 @@
 ---
-- name: LXC test playbook
+- name: LXC TEST | create cluster
   hosts: all
   vars:
     lxc_clones:
-      - name: sample
+      - name: first
         template: ubuntu.trusty
         ip: 10.10.3.3
 
-      - name: other
+      - name: to_be_recreated
         template: ubuntu.trusty
         ip: 10.10.5.5
 
@@ -17,5 +17,25 @@
 
       - source: 2055
         target: 10.10.5.5:22
+  roles:
+    - lxc
+
+- name: LXC TEST | destroy node
+  hosts: all
+  vars:
+    container: to_be_recreated
+  tasks:
+    - include: roles/lxc/tasks/destroy.yml
+
+- name: LXC TEST | recreate and add node to cluster
+  hosts: all
+  vars:
+    lxc_clones:
+      - name: to_be_recreated
+        template: ubuntu.trusty
+        ip: 10.10.5.5
+      - name: added
+        template: ubuntu.trusty
+        ip: 10.10.4.4
   roles:
     - lxc

@@ -22,6 +22,13 @@ lxc_containers:
    release: trusty
    user: dev
    password: dev
+   packages:
+     - python2.7
+     - python-pip
+     - rsync
+     - ntp
+     - tzdata
+     - htop
 
 # actual working containers, created as a cheap clones with overlayed fs
 lxc_clones:
@@ -53,7 +60,9 @@ Example Playbook
     - lxc
 ```
 
-You can use Vagrantfile, shipped in vagrant dir
+You can use Vagrantfile, shipped in vagrant dir.
+Also there is a tasks file available at tasks/destroy.yml which can be used
+to destroy lxc containers. See vagrant/test.yml for usage examples
 
 License
 -------
