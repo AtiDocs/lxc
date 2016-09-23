@@ -1,0 +1,5 @@
+[lxc]
+first.lxc ansible_ssh_user=root
+
+[lxc:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p vagrant@192.168.88.88"'

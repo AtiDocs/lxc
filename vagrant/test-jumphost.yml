@@ -1,0 +1,7 @@
+---
+- name: Jumphost test
+  hosts: lxc
+  tasks:
+
+    - debug: var=hostvars[inventory_hostname]
+
