@@ -39,3 +39,25 @@
         ip: 10.10.4.4
   roles:
     - lxc
+
+- name: LXC TEST | bastion usage
+  hosts: all
+  vars:
+    rootfs: /var/lib/lxc/ubuntu.trusty/rootfs
+  tasks:
+
+#    - name: generate ssh key on host
+#      user: name=vagrant generate_ssh_key=yes
+
+#    - name: ensure .ssh is exists for root
+#      file: path={{rootfs}}/root/.ssh state=directory
+
+#    - name: add keys as authorized to base image
+#      shell: "cat /home/vagrant/.ssh/id_rsa.pub >> {{rootfs}}/root/.ssh/authorized_keys"
+
+    - name: add keys as authorized for root
+      authorized_key:
+        user: root
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        path: "{{rootfs}}/root/.ssh/authorized_keys"
+        manage_dir: no
